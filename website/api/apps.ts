@@ -99,14 +99,16 @@ async function findRepositoryIcon(repository: GitHubRepository): Promise<string 
     const imageFiles = (tree.tree || []).filter((item) => {
       if (item.type !== 'blob' || !/\.(png|jpe?g|webp|svg)$/i.test(item.path)) return false
       const path = item.path.toLowerCase()
-      if (path.includes('/mipmap') || path.includes('/drawable') || path.includes('/screenshots/')) return false
-      return /(^|\/)(app[-_]?icon|icon|logo)([-_./]|$)/i.test(path)
+      if (path.includes('/screenshots/')) return false
+      return /(^|\/)(app[-_]?icon|ic_launcher(?:_round)?|icon|logo|favicon)([-_./]|$)/i.test(path)
     })
     const score = (path: string) => {
       const value = path.toLowerCase()
-      if (/^app[-_]?icon\.(png|webp)$/i.test(value.split('/').pop() || '')) return 0
-      if (/^icon\.(png|webp)$/i.test(value.split('/').pop() || '')) return 1
-      if (/^logo\.(png|webp|svg)$/i.test(value.split('/').pop() || '')) return 2
+      const filename = value.split('/').pop() || ''
+      if (/^(ic_launcher(?:_round)?|app[-_]?icon)\.(png|webp)$/i.test(filename)) return 0
+      if (/^icon\.(png|webp)$/i.test(filename)) return 1
+      if (/^logo\.(png|webp|svg)$/i.test(filename)) return 2
+      if (/^favicon\.(png|webp|svg)$/i.test(filename)) return 3
       if (value.includes('/assets/')) return 3
       return 4
     }

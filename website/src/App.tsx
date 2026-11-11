@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -29,27 +29,24 @@ type StoreApp = {
   repoUrl?: string
 }
 
-const apps: StoreApp[] = [
-  {
-    name: 'Nexvio',
-    tagline: 'Your entertainment, organised.',
-    description:
-      'Discover movies and series in one place, with episode selection and viewing progress memory.',
-    category: 'Entertainment',
-    version: '1.0.508',
-    platform: 'Android 7.0+',
-    status: 'Available',
-    initials: 'N',
-    accent: 'violet',
-    downloadUrl: 'https://github.com/nexarion666-png/Nexvio-/releases/latest/download/Nexvio.apk',
-    repoUrl: 'https://github.com/nexarion666-png/Nexvio-',
-  },
-]
-
 const categories = ['All apps', 'Entertainment', 'Productivity', 'Tools']
 
 function App() {
+  const [apps, setApps] = useState<StoreApp[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    let active = true
+    loadStoreApps()
+      .then((loadedApps) => { if (active) setApps(loadedApps) })
+      .catch((error: unknown) => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Could not load apps from GitHub.')
+      })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
   const [category, setCategory] = useState('All apps')
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -166,7 +163,11 @@ function App() {
             <span className="result-count">{visibleApps.length} {visibleApps.length === 1 ? 'APP' : 'APPS'}</span>
           </div>
 
-          {visibleApps.length > 0 ? (
+          {loading ? (
+            <div className="empty-state"><Sparkles size={25} /><h3>Loading the collection</h3><p>Checking the latest app releases on GitHub…</p></div>
+          ) : loadError ? (
+            <div className="empty-state"><Github size={25} /><h3>Store catalogue unavailable</h3><p>{loadError}</p><button className="text-button" onClick={() => window.location.reload()}>Try again <ArrowRight size={15} /></button></div>
+          ) : visibleApps.length > 0 ? (
             <div className="app-grid">
               {visibleApps.map((app) => (
                 <article className="app-card" key={app.name}>
@@ -200,8 +201,8 @@ function App() {
           ) : (
             <div className="empty-state">
               <Search size={25} />
-              <h3>No apps found</h3>
-              <p>Try another search or choose a different category.</p>
+              <h3>{apps.length === 0 ? 'No released apps found' : 'No apps found'}</h3>
+              <p>{apps.length === 0 ? 'Add the GitHub topic nexastore-app to an app repository that has a published release with a downloadable asset.' : 'Try another search or choose a different category.'}</p>
               <button className="text-button" onClick={() => { setQuery(''); setCategory('All apps') }}>Clear filters <ArrowRight size={15} /></button>
             </div>
           )}

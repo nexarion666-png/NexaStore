@@ -1,0 +1,139 @@
+export type StoreApp = {
+  name: string
+  tagline: string
+  description: string
+  category: string
+  version: string
+  platform: string
+  status: 'Available' | 'Coming soon'
+  initials: string
+  accent: string
+  downloadUrl?: string
+  repoUrl?: string
+}
+
+type GitHubRepository = {
+  name: string
+  full_name: string
+  html_url: string
+  description: string | null
+  topics?: string[]
+}
+
+type GitHubRelease = {
+  name: string | null
+  tag_name: string
+  body: string | null
+  html_url: string
+  assets: Array<{
+    name: string
+    browser_download_url: string
+    size: number
+  }>
+}
+
+const API_HEADERS = {
+  Accept: 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28',
+}
+
+async function githubJson<T>(url: string): Promise<T> {
+  const response = await fetch(url, { headers: API_HEADERS })
+  if (!response.ok) {
+    if (response.status === 403 || response.status === 429) {
+      throw new Error('GitHub is temporarily limiting catalogue requests. Please try again in a little while.')
+    }
+    throw new Error(`GitHub returned an error (${response.status}). Please try again later.`)
+  }
+  return response.json() as Promise<T>
+}
+
+function cleanText(markdown: string | null, fallback: string): string {
+  if (!markdown) return fallback
+  const plain = markdown
+    .replace(/!\\[[^\\]]*\\]\\([^)]*\\)/g, '')
+    .replace(/\\[([^\\]]+)\\]\\([^)]*\\)/g, '$1')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[#>*_`~]/g, '')
+    .replace(/\\s+/g, ' ')
+    .trim()
+  return plain.slice(0, 220) || fallback
+}
+
+function categoryFromTopics(topics: string[] = []): string {
+  const values = topics.map((topic) => topic.toLowerCase())
+  if (values.some((topic) => ['entertainment', 'media', 'streaming'].includes(topic))) return 'Entertainment'
+  if (values.some((topic) => ['productivity', 'education', 'learning'].includes(topic))) return 'Productivity'
+  return 'Tools'
+}
+
+function platformFromAsset(filename: string): string {
+  const lower = filename.toLowerCase()
+  if (lower.endsWith('.apk') || lower.endsWith('.aab')) return 'Android'
+  if (lower.endsWith('.exe') || lower.endsWith('.msi')) return 'Windows'
+  if (lower.endsWith('.dmg') || lower.endsWith('.pkg')) return 'macOS'
+  if (lower.endsWith('.ipa')) return 'iOS'
+  return 'Multiple platforms'
+}
+
+function initialsFromName(name: string): string {
+  return name
+    .split(/[\\s-_]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'N'
+}
+
+async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp | null> {
+  try {
+    const release = await githubJson<GitHubRelease>(
+      `https://api.github.com/repos/${repository.full_name}/releases/latest`,
+    )
+    const asset = [...release.assets].sort((a, b) => {
+      const aApk = a.name.toLowerCase().endsWith('.apk') ? 1 : 0
+      const bApk = b.name.toLowerCase().endsWith('.apk') ? 1 : 0
+      return bApk - aApk
+    }).find((item) => item.size > 0)
+
+    if (!asset) return null
+
+    const name = release.name?.trim() || repository.name.replace(/[-_]+/g, ' ')
+    const fallbackDescription = repository.description || `${name} is available from its GitHub release.`
+    return {
+      name,
+      tagline: repository.description || 'A Nexarion application.',
+      description: cleanText(release.body, fallbackDescription),
+      category: categoryFromTopics(repository.topics),
+      version: release.tag_name,
+      platform: platformFromAsset(asset.name),
+      status: 'Available',
+      initials: initialsFromName(name),
+      accent: 'violet',
+      downloadUrl: asset.browser_download_url,
+      repoUrl: repository.html_url,
+    }
+  } catch (error) {
+    // A repository without a published stable release is simply not listed.
+    if (error instanceof Error && error.message.includes('limiting catalogue')) throw error
+    return null
+  }
+}
+
+export async function loadStoreApps(): Promise<StoreApp[]> {
+  const search = await githubJson<{ items: GitHubRepository[] }>(
+    'https://api.github.com/search/repositories?q=user%3Anexarion666-png+topic%3Anexastore-app&sort=updated&per_page=100',
+  )
+
+  // Keep requests modest to avoid overwhelming GitHub's public API.
+  const repositories = search.items.slice(0, 20)
+  const apps: StoreApp[] = []
+  for (let index = 0; index < repositories.length; index += 4) {
+    const batch = repositories.slice(index, index + 4)
+    const results = await Promise.all(batch.map(loadRepositoryApp))
+    apps.push(...results.filter((item): item is StoreApp => item !== null))
+  }
+
+  return apps.sort((a, b) => a.name.localeCompare(b.name))
+}

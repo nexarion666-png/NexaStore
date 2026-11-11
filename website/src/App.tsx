@@ -63,7 +63,7 @@ function App() {
         app.description.toLowerCase().includes(normalized)
       return matchesCategory && matchesQuery
     })
-  }, [query, category])
+  }, [apps, query, category])
 
   return (
     <div className="site-shell">

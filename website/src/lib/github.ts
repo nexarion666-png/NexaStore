@@ -14,7 +14,8 @@ export type StoreApp = {
 }
 
 export async function loadStoreApps(): Promise<StoreApp[]> {
-  const response = await fetch('/api/apps')
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/apps'
+  const response = await fetch(apiUrl)
   if (!response.ok) {
     if (response.status === 429) {
       throw new Error('The store catalogue is temporarily busy. Please try again shortly.')

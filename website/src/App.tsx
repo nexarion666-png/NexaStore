@@ -28,6 +28,7 @@ type StoreApp = {
   accent: string
   downloadUrl?: string
   repoUrl?: string
+  iconUrl?: string
 }
 
 const categories = ['All apps', 'Entertainment', 'Productivity', 'Tools']
@@ -173,7 +174,10 @@ function App() {
               {visibleApps.map((app) => (
                 <article className="app-card" key={app.name}>
                   <div className="app-card-top">
-                    <div className={'app-icon app-icon-' + app.accent}>{app.initials}</div>
+                    <div className={'app-icon app-icon-' + app.accent}>
+                      <span>{app.initials}</span>
+                      {app.iconUrl && <img className="app-icon-image" src={app.iconUrl} alt={app.name + ' app icon'} loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                    </div>
                     <span className="available-label"><i /> {app.status}</span>
                   </div>
                   <div className="app-card-info">

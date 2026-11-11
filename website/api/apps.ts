@@ -29,6 +29,7 @@ type StoreApp = {
   accent: string
   downloadUrl: string
   repoUrl: string
+  iconUrl?: string
 }
 
 type Request = { method?: string }
@@ -89,6 +90,34 @@ function initialsFromName(name: string): string {
     .toUpperCase() || 'N'
 }
 
+async function findRepositoryIcon(repository: GitHubRepository): Promise<string | undefined> {
+  try {
+    const tree = await githubJson<{ tree?: Array<{ path: string; type: string }> }>(
+      `https://api.github.com/repos/${repository.full_name}/git/trees/HEAD?recursive=1`,
+    )
+    const imageFiles = (tree.tree || []).filter((item) => {
+      if (item.type !== 'blob' || !/\\.(png|jpe?g|webp|svg)$/i.test(item.path)) return false
+      const path = item.path.toLowerCase()
+      if (path.includes('/mipmap') || path.includes('/drawable') || path.includes('/screenshots/')) return false
+      return /(^|\\/)(app[-_]?icon|icon|logo)([-_./]|$)/i.test(path)
+    })
+    const score = (path: string) => {
+      const value = path.toLowerCase()
+      if (/^app[-_]?icon\\.(png|webp)$/i.test(value.split('/').pop() || '')) return 0
+      if (/^icon\\.(png|webp)$/i.test(value.split('/').pop() || '')) return 1
+      if (/^logo\\.(png|webp|svg)$/i.test(value.split('/').pop() || '')) return 2
+      if (value.includes('/assets/')) return 3
+      return 4
+    }
+    const candidate = imageFiles.sort((a, b) => score(a.path) - score(b.path))[0]
+    if (!candidate) return undefined
+    const encodedPath = candidate.path.split('/').map(encodeURIComponent).join('/')
+    return `https://raw.githubusercontent.com/${repository.full_name}/HEAD/${encodedPath}`
+  } catch {
+    return undefined
+  }
+}
+
 async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp | null> {
   try {
     const release = await githubJson<GitHubRelease>(
@@ -102,6 +131,7 @@ async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp
 
     if (!asset) return null
 
+    const [iconUrl] = await Promise.all([findRepositoryIcon(repository)])
     const name = release.name?.trim() || repository.name.replace(/[-_]+/g, ' ')
     const fallbackDescription = repository.description || \`\${name} is available from its GitHub release.\`
     return {
@@ -116,6 +146,7 @@ async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp
       accent: 'violet',
       downloadUrl: asset.browser_download_url,
       repoUrl: repository.html_url,
+      iconUrl,
     }
   } catch (error) {
     // A repository without a published stable release is normal; other errors should surface.

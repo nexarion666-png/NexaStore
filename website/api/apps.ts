@@ -151,10 +151,9 @@ async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp
       repoUrl: repository.html_url,
       iconUrl,
     }
-  } catch (error) {
-    // A repository without a published stable release is normal; other errors should surface.
-    if (error instanceof Error && error.message.includes('404')) return null
-    throw error
+  } catch {
+    // Skip repositories whose release endpoint is unavailable; one repo must not break the whole catalogue.
+    return null
   }
 }
 
@@ -167,14 +166,14 @@ export default async function handler(req: Request, res: Response) {
   }
 
   try {
-    const search = await githubJson<{ items: GitHubRepository[] }>(
-      'https://api.github.com/search/repositories?q=user%3Anexarion666-png&sort=updated&per_page=100',
+    const repositories = await githubJson<GitHubRepository[]>(
+      'https://api.github.com/users/nexarion666-png/repos?sort=updated&per_page=100',
     )
-    const repositories = search.items.slice(0, 20)
+    const selectedRepositories = repositories.filter((repository) => !('archived' in repository && repository.archived)).slice(0, 20)
     const apps: StoreApp[] = []
 
-    for (let index = 0; index < repositories.length; index += 4) {
-      const batch = repositories.slice(index, index + 4)
+    for (let index = 0; index < selectedRepositories.length; index += 4) {
+      const batch = selectedRepositories.slice(index, index + 4)
       const results = await Promise.all(batch.map(loadRepositoryApp))
       apps.push(...results.filter((item): item is StoreApp => item !== null))
     }

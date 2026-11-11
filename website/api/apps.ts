@@ -170,7 +170,14 @@ export default async function handler(req: Request, res: Response) {
     const repositories = await githubJson<GitHubRepository[]>(
       'https://api.github.com/users/nexarion666-png/repos?sort=updated&per_page=100',
     )
-    const selectedRepositories = repositories.filter((repository) => !('archived' in repository && repository.archived)).slice(0, 20)
+    // Explicitly include Nexvio so its private repository is still discoverable with GITHUB_TOKEN.
+    const nexvioRepository = await githubJson<GitHubRepository>(
+      'https://api.github.com/repos/nexarion666-png/Nexvio-',
+    ).catch(() => null)
+    const allRepositories = nexvioRepository
+      ? [...repositories.filter((repository) => repository.full_name !== nexvioRepository.full_name), nexvioRepository]
+      : repositories
+    const selectedRepositories = allRepositories.filter((repository) => !('archived' in repository && repository.archived)).slice(0, 20)
     const apps: StoreApp[] = []
 
     for (let index = 0; index < selectedRepositories.length; index += 4) {

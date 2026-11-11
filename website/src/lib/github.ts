@@ -10,6 +10,7 @@ export type StoreApp = {
   accent: string
   downloadUrl?: string
   repoUrl?: string
+  iconUrl?: string
 }
 
 export async function loadStoreApps(): Promise<StoreApp[]> {

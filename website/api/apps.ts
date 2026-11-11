@@ -48,7 +48,7 @@ const headers = {
 async function githubJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { headers })
   if (!response.ok) {
-    throw new Error(\`GitHub API request failed: \${response.status}\`)
+    throw new Error(`GitHub API request failed: ${response.status}`)
   }
   return response.json() as Promise<T>
 }
@@ -59,7 +59,7 @@ function cleanText(markdown: string | null, fallback: string): string {
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/<[^>]*>/g, '')
-    .replace(/[#>*_\`~]/g, '')
+    .replace(/[#>*_`~]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
   return plain.slice(0, 220) || fallback
@@ -124,7 +124,7 @@ async function findRepositoryIcon(repository: GitHubRepository): Promise<string 
 async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp | null> {
   try {
     const release = await githubJson<GitHubRelease>(
-      \`https://api.github.com/repos/\${repository.full_name}/releases/latest\`,
+      `https://api.github.com/repos/${repository.full_name}/releases/latest`,
     )
     const asset = [...release.assets].sort((a, b) => {
       const aApk = a.name.toLowerCase().endsWith('.apk') ? 1 : 0
@@ -136,7 +136,7 @@ async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp
 
     const [iconUrl] = await Promise.all([findRepositoryIcon(repository)])
     const name = release.name?.trim() || repository.name.replace(/[-_]+/g, ' ')
-    const fallbackDescription = repository.description || \`\${name} is available from its GitHub release.\`
+    const fallbackDescription = repository.description || `${name} is available from its GitHub release.`
     return {
       name,
       tagline: repository.description || 'A Nexarion application.',

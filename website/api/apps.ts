@@ -117,9 +117,10 @@ async function loadRepositoryApp(repository: GitHubRepository): Promise<StoreApp
       downloadUrl: asset.browser_download_url,
       repoUrl: repository.html_url,
     }
-  } catch {
-    // Repositories without a published stable release are omitted.
-    return null
+  } catch (error) {
+    // A repository without a published stable release is normal; other errors should surface.
+    if (error instanceof Error && error.message.includes('404')) return null
+    throw error
   }
 }
 
@@ -133,7 +134,7 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     const search = await githubJson<{ items: GitHubRepository[] }>(
-      'https://api.github.com/search/repositories?q=user%3Anexarion666-png+topic%3Anexastore-app&sort=updated&per_page=100',
+      'https://api.github.com/search/repositories?q=user%3Anexarion666-png&sort=updated&per_page=100',
     )
     const repositories = search.items.slice(0, 20)
     const apps: StoreApp[] = []

@@ -203,7 +203,7 @@ function App() {
             <div className="empty-state">
               <Search size={25} />
               <h3>{apps.length === 0 ? 'No released apps found' : 'No apps found'}</h3>
-              <p>{apps.length === 0 ? 'Add the GitHub topic nexastore-app to an app repository that has a published release with a downloadable asset.' : 'Try another search or choose a different category.'}</p>
+              <p>{apps.length === 0 ? 'Publish a GitHub Release in an app repository and attach a downloadable file to it. The store will discover it automatically.' : 'Try another search or choose a different category.'}</p>
               <button className="text-button" onClick={() => { setQuery(''); setCategory('All apps') }}>Clear filters <ArrowRight size={15} /></button>
             </div>
           )}

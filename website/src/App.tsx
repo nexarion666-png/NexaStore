@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { loadStoreApps } from './lib/github'
 import {
   ArrowDownToLine,
   ArrowRight,

@@ -4,6 +4,7 @@ type GitHubRepository = {
   html_url: string
   description: string | null
   topics?: string[]
+  default_branch?: string
 }
 
 type GitHubRelease = {
@@ -93,7 +94,7 @@ function initialsFromName(name: string): string {
 async function findRepositoryIcon(repository: GitHubRepository): Promise<string | undefined> {
   try {
     const tree = await githubJson<{ tree?: Array<{ path: string; type: string }> }>(
-      `https://api.github.com/repos/${repository.full_name}/git/trees/HEAD?recursive=1`,
+      `https://api.github.com/repos/${repository.full_name}/git/trees/${encodeURIComponent(repository.default_branch || 'main')}?recursive=1`,
     )
     const imageFiles = (tree.tree || []).filter((item) => {
       if (item.type !== 'blob' || !/\\.(png|jpe?g|webp|svg)$/i.test(item.path)) return false
@@ -112,7 +113,7 @@ async function findRepositoryIcon(repository: GitHubRepository): Promise<string 
     const candidate = imageFiles.sort((a, b) => score(a.path) - score(b.path))[0]
     if (!candidate) return undefined
     const encodedPath = candidate.path.split('/').map(encodeURIComponent).join('/')
-    return `https://raw.githubusercontent.com/${repository.full_name}/HEAD/${encodedPath}`
+    return `https://raw.githubusercontent.com/${repository.full_name}/${encodeURIComponent(repository.default_branch || 'main')}/${encodedPath}`
   } catch {
     return undefined
   }
